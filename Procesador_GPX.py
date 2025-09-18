@@ -252,7 +252,7 @@ if latitudes and longitudes:
     m.save(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\mapa_ruta_avanzado.html")
     print('Mapa interactivo avanzado guardado como mapa_ruta_avanzado.html')
 
-# Centro del mapa: primer punto de la ruta
+# Centro del mapa:Primer punto de inicio de la ruta
 if latitudes and longitudes:
     center = [latitudes[0], longitudes[0]]
     m = folium.Map(location=center, zoom_start=15)
