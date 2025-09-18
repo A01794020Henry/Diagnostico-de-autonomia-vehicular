@@ -26,6 +26,8 @@ for msg in can.BLFReader("ruta_al_blf"):
 valores = db.decode_message(msg.arbitration_id, mensaje.data)
 print (valores) """
 
+# Se debe calcular y sobreponer el consumo con respecto al avance en el tiempo
+
 
 
     
