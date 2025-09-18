@@ -252,12 +252,12 @@ if latitudes and longitudes:
     m.save(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\mapa_ruta_avanzado.html")
     print('Mapa interactivo avanzado guardado como mapa_ruta_avanzado.html')
 
-# Centro del mapa:Primer punto de inicio de la ruta
+# Primer punto de inicio de la ruta (Para tener en cuenta)
 if latitudes and longitudes:
     center = [latitudes[0], longitudes[0]]
     m = folium.Map(location=center, zoom_start=15)
-
-    # Dibujar la ruta
+    
+  # Dibujar la ruta recorrida
     folium.PolyLine(list(zip(latitudes, longitudes)), color='blue', weight=4, opacity=0.7, tooltip='Ruta').add_to(m)
 
     # Marcar inicio y fin
@@ -274,3 +274,5 @@ if latitudes and longitudes:
     print('Mapa interactivo guardado como mapa_ruta.html')
 else:
     print("No se encontraron purnto para recontruir la ruta")
+    
+    
