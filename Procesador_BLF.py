@@ -1,3 +1,30 @@
+"""
+ARCHIVO ACTUALIZADO - Usar main_blf_processor.py
+===============================================
+
+Este archivo ha sido reemplazado por una versión más completa y robusta.
+
+Para usar el nuevo sistema:
+1. Interfaz gráfica: python main_blf_processor.py
+2. Línea de comandos: python main_blf_processor.py --cli --help
+3. Ejemplo de uso: python ejemplo_uso.py
+
+Nuevas características:
+- Procesamiento de múltiples archivos BLF
+- Unificación y ordenamiento cronológico automático  
+- Decodificación robusta con archivos DBC
+- Interfaz gráfica interactiva con filtros
+- Exportación de datos y gráficos
+- Manejo robusto de errores
+
+Ver README.md para documentación completa.
+"""
+
+print("⚠️  Este archivo ha sido actualizado.")
+print("🚀 Usa 'python main_blf_processor.py' para el nuevo sistema completo.")
+print("📖 Ver README.md para documentación detallada.")
+
+# Código original conservado para referencia:
 import cantools
 import can
 import pandas as pd
@@ -5,28 +32,25 @@ import matplotlib
 import pyqtgraph
 
 # Carga del DBC disponible 
-db = cantools.database.load_file(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Desarrollo de Software EV\Datos\DBC\IP_JZ - CAN EV.DBC")
+# db = cantools.database.load_file(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Desarrollo de Software EV\Datos\DBC\IP_JZ - CAN EV.DBC")
 
-
-#Lectura del archvio DBC
-for mesaje in db.messages:
-    print(mesaje.name)
-    print(mesaje.frame_id)
-    print([s.name] for s in mesaje.signals)
+# Usar el nuevo sistema en su lugar:
+if __name__ == "__main__":
+    import os
+    print("\n" + "="*60)
+    print("EJECUTANDO NUEVO SISTEMA...")
+    print("="*60)
     
-""" # Lectura del archivo BLF
-for msg in can.BLFReader("ruta_al_blf"):
-    print(msg.arbitration_id)  # El ID del mensaje
-    print(msg.data) # Los datos crudos (bytes)
-    print(msg.timestamp) # El tiempo del mensaje
-    break # Solo se requiere el primer mensaje
-    
-
-# Decodificación de mensajes con DBC
-valores = db.decode_message(msg.arbitration_id, mensaje.data)
-print (valores) """
-
-# Se debe calcular y sobreponer el consumo con respecto al avance en el tiempo
+    # Intentar ejecutar el nuevo sistema
+    try:
+        from main_blf_processor import main
+        main()
+    except ImportError:
+        print("Para usar el nuevo sistema, ejecuta:")
+        print("python main_blf_processor.py")
+    except Exception as e:
+        print(f"Error: {e}")
+        print("Ejecuta manualmente: python main_blf_processor.py")
 
 
 
