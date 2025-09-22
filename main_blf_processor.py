@@ -66,13 +66,68 @@ def setup_example_paths():
     
     return default_dbc, example_blf_dir
 
-def run_cli_mode(blf_directory, dbc_path=None, output_file=None):
+def process_dbc_arguments(dbc_args=None, dbc_list_file=None, default_dbc=None):
+    """
+    Procesa los argumentos de archivos DBC desde línea de comandos.
+    
+    Args:
+        dbc_args (List[str]): Lista de archivos DBC desde --dbc
+        dbc_list_file (str): Archivo con lista de DBCs desde --dbc-list
+        default_dbc (str): Archivo DBC por defecto si no se especifica ninguno
+        
+    Returns:
+        List[str]: Lista de rutas válidas a archivos DBC
+    """
+    dbc_paths = []
+    
+    # Procesar argumentos --dbc (múltiples)
+    if dbc_args:
+        for dbc_path in dbc_args:
+            if os.path.exists(dbc_path):
+                dbc_paths.append(dbc_path)
+                print(f"Archivo DBC agregado: {dbc_path}")
+            else:
+                print(f"⚠️  Archivo DBC no encontrado: {dbc_path}")
+    
+    # Procesar archivo de lista --dbc-list
+    if dbc_list_file:
+        if os.path.exists(dbc_list_file):
+            print(f"Cargando lista de DBCs desde: {dbc_list_file}")
+            try:
+                with open(dbc_list_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        dbc_path = line.strip()
+                        if dbc_path and not dbc_path.startswith('#'):  # Ignorar líneas vacías y comentarios
+                            if os.path.exists(dbc_path):
+                                dbc_paths.append(dbc_path)
+                                print(f"Archivo DBC agregado desde lista: {dbc_path}")
+                            else:
+                                print(f"⚠️  Archivo DBC no encontrado en lista: {dbc_path}")
+            except Exception as e:
+                print(f"⚠️  Error leyendo archivo de lista DBC: {e}")
+        else:
+            print(f"⚠️  Archivo de lista DBC no encontrado: {dbc_list_file}")
+    
+    # Si no hay DBCs especificados, usar el por defecto si existe
+    if not dbc_paths and default_dbc and os.path.exists(default_dbc):
+        dbc_paths = [default_dbc]
+        print(f"Usando archivo DBC por defecto: {default_dbc}")
+    
+    # Eliminar duplicados manteniendo el orden
+    unique_dbc_paths = []
+    for path in dbc_paths:
+        if path not in unique_dbc_paths:
+            unique_dbc_paths.append(path)
+    
+    return unique_dbc_paths
+
+def run_cli_mode(blf_directory, dbc_paths=None, output_file=None):
     """
     Ejecuta el procesador en modo línea de comandos.
     
     Args:
         blf_directory (str): Directorio con archivos BLF
-        dbc_path (str): Ruta al archivo DBC (opcional)
+        dbc_paths (List[str]): Lista de rutas a archivos DBC (opcional)
         output_file (str): Archivo de salida CSV (opcional)
     """
     logger.info("=== INICIANDO PROCESAMIENTO EN MODO CLI ===")
@@ -81,8 +136,8 @@ def run_cli_mode(blf_directory, dbc_path=None, output_file=None):
     processor = ProcessorBLF()
     
     try:
-        # Procesar archivos
-        decoded_df = processor.process_directory(blf_directory, dbc_path)
+        # Procesar archivos con múltiples DBC
+        decoded_df = processor.process_directory(blf_directory, dbc_paths=dbc_paths)
         
         if decoded_df.empty:
             logger.error("No se pudieron procesar los archivos o no se encontraron datos")
@@ -155,8 +210,14 @@ Ejemplos de uso:
   # Modo línea de comandos básico
   python main_blf_processor.py --cli --blf-dir "C:/ruta/archivos/blf"
 
-  # Con archivo DBC y salida CSV
-  python main_blf_processor.py --cli --blf-dir "C:/ruta/blf" --dbc "archivo.dbc" --output "resultado.csv"
+  # Con un archivo DBC
+  python main_blf_processor.py --cli --blf-dir "C:/ruta/blf" --dbc "archivo1.dbc" --output "resultado.csv"
+
+  # Con múltiples archivos DBC
+  python main_blf_processor.py --cli --blf-dir "C:/ruta/blf" --dbc "vehiculo.dbc" --dbc "motores.dbc" --dbc "bateria.dbc"
+
+  # Con lista de archivos DBC desde archivo
+  python main_blf_processor.py --cli --blf-dir "C:/ruta/blf" --dbc-list "lista_dbc.txt" --output "resultado.csv"
         """
     )
     
@@ -175,7 +236,14 @@ Ejemplos de uso:
     parser.add_argument(
         '--dbc', 
         type=str,
-        help='Ruta al archivo DBC para decodificación'
+        action='append',
+        help='Ruta a archivo DBC para decodificación (puede especificarse múltiples veces)'
+    )
+    
+    parser.add_argument(
+        '--dbc-list',
+        type=str,
+        help='Archivo de texto con lista de rutas DBC (una por línea)'
     )
     
     parser.add_argument(
@@ -216,14 +284,17 @@ Ejemplos de uso:
             print(f"Error: El directorio {blf_directory} no existe")
             return 1
         
-        dbc_path = args.dbc or (default_dbc if os.path.exists(default_dbc) else None)
+        # Procesar argumentos de archivos DBC
+        dbc_paths = process_dbc_arguments(args.dbc, args.dbc_list, default_dbc)
         
-        if dbc_path:
-            print(f"Usando archivo DBC: {dbc_path}")
+        if dbc_paths:
+            print(f"\nUsando {len(dbc_paths)} archivo(s) DBC:")
+            for i, dbc_path in enumerate(dbc_paths, 1):
+                print(f"  {i}. {dbc_path}")
         else:
-            print("Procesando sin archivo DBC (solo datos crudos)")
+            print("\nProcesando sin archivos DBC (solo datos crudos)")
         
-        success = run_cli_mode(blf_directory, dbc_path, args.output)
+        success = run_cli_mode(blf_directory, dbc_paths, args.output)
         return 0 if success else 1
         
     else:

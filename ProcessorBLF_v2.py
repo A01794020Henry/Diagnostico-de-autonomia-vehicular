@@ -260,7 +260,7 @@ class ProcessorBLF:
     
     def decode_messages(self, df: pd.DataFrame = None) -> pd.DataFrame:
         """
-        Decodifica los mensajes CAN usando el archivo DBC cargado.
+        Decodifica los mensajes CAN usando todos los archivos DBC cargados.
         
         Args:
             df (pd.DataFrame): DataFrame con mensajes a decodificar
@@ -275,57 +275,85 @@ class ProcessorBLF:
             logger.warning("No hay datos para decodificar")
             return pd.DataFrame()
         
-        if not self.database:
-            logger.warning("No hay base de datos DBC cargada")
+        # Verificar si hay bases de datos DBC cargadas
+        if not self.databases and not self.database:
+            logger.warning("No hay bases de datos DBC cargadas")
             return df
         
         decoded_data = []
+        successful_decodings = 0
+        failed_decodings = 0
         
         logger.info("Iniciando decodificación de mensajes...")
+        if self.databases:
+            logger.info(f"Usando {len(self.databases)} archivos DBC cargados")
         
         for index, row in df.iterrows():
             if index % 10000 == 0:
                 logger.info(f"Decodificando mensaje {index}/{len(df)}")
             
-            try:
-                message = self.database.get_message_by_frame_id(row['arbitration_id'])
-                decoded_msg = self.database.decode_message(row['arbitration_id'], row['data_bytes'])
-                
-                # Crear entrada para cada señal decodificada
-                for signal_name, signal_value in decoded_msg.items():
-                    signal_entry = {
-                        'timestamp': row['timestamp'],
-                        'datetime': row['datetime'],
-                        'message_name': message.name,
-                        'message_id': row['arbitration_id'],
-                        'signal_name': signal_name,
-                        'signal_value': signal_value,
-                        'file_source': row['file_source']
-                    }
+            decoded_successfully = False
+            
+            # Intentar decodificar con todas las bases de datos disponibles
+            databases_to_try = []
+            
+            # Agregar bases de datos múltiples
+            if self.databases:
+                databases_to_try.extend(list(self.databases.values()))
+            
+            # Agregar base de datos principal para compatibilidad (si no está ya en múltiples)
+            if self.database and self.database not in databases_to_try:
+                databases_to_try.append(self.database)
+            
+            # Intentar decodificar con cada base de datos hasta encontrar coincidencia
+            for database in databases_to_try:
+                try:
+                    message = database.get_message_by_frame_id(row['arbitration_id'])
+                    decoded_msg = database.decode_message(row['arbitration_id'], row['data_bytes'])
                     
-                    # Agregar información adicional de la señal si está disponible
-                    try:
-                        signal_obj = message.get_signal_by_name(signal_name)
-                        signal_entry.update({
-                            'unit': signal_obj.unit or '',
-                            'minimum': signal_obj.minimum,
-                            'maximum': signal_obj.maximum,
-                            'scale': signal_obj.scale,
-                            'offset': signal_obj.offset
-                        })
-                    except:
-                        signal_entry.update({
-                            'unit': '',
-                            'minimum': None,
-                            'maximum': None,
-                            'scale': 1,
-                            'offset': 0
-                        })
+                    # Crear entrada para cada señal decodificada
+                    for signal_name, signal_value in decoded_msg.items():
+                        signal_entry = {
+                            'timestamp': row['timestamp'],
+                            'datetime': row['datetime'],
+                            'message_name': message.name,
+                            'message_id': row['arbitration_id'],
+                            'signal_name': signal_name,
+                            'signal_value': signal_value,
+                            'file_source': row['file_source']
+                        }
+                        
+                        # Agregar información adicional de la señal si está disponible
+                        try:
+                            signal_obj = message.get_signal_by_name(signal_name)
+                            signal_entry.update({
+                                'unit': signal_obj.unit or '',
+                                'minimum': signal_obj.minimum,
+                                'maximum': signal_obj.maximum,
+                                'scale': signal_obj.scale,
+                                'offset': signal_obj.offset
+                            })
+                        except:
+                            signal_entry.update({
+                                'unit': '',
+                                'minimum': None,
+                                'maximum': None,
+                                'scale': 1,
+                                'offset': 0
+                            })
+                        
+                        decoded_data.append(signal_entry)
                     
-                    decoded_data.append(signal_entry)
+                    decoded_successfully = True
+                    successful_decodings += 1
+                    break  # Salir del bucle de bases de datos si se decodificó exitosamente
                     
-            except Exception as e:
-                # Mantener mensajes no decodificados como datos crudos
+                except Exception:
+                    # Continuar con la siguiente base de datos
+                    continue
+            
+            # Si no se pudo decodificar con ninguna base de datos, mantener como datos crudos
+            if not decoded_successfully:
                 raw_entry = {
                     'timestamp': row['timestamp'],
                     'datetime': row['datetime'],
@@ -341,11 +369,15 @@ class ProcessorBLF:
                     'offset': 0
                 }
                 decoded_data.append(raw_entry)
+                failed_decodings += 1
         
         decoded_df = pd.DataFrame(decoded_data)
         self.decoded_dataset = decoded_df
         
         logger.info(f"Decodificación completada: {len(decoded_df)} señales decodificadas")
+        logger.info(f"Mensajes exitosamente decodificados: {successful_decodings}")
+        logger.info(f"Mensajes no decodificados (datos crudos): {failed_decodings}")
+        
         if not decoded_df.empty:
             logger.info(f"Mensajes únicos: {decoded_df['message_name'].nunique()}")
             logger.info(f"Señales únicas: {decoded_df['signal_name'].nunique()}")
@@ -381,6 +413,53 @@ class ProcessorBLF:
             return sorted(filtered_df['signal_name'].unique().tolist())
         else:
             return sorted(self.decoded_dataset['signal_name'].unique().tolist())
+    
+    def get_loaded_dbc_info(self) -> Dict[str, Dict]:
+        """
+        Obtiene información sobre todos los archivos DBC cargados.
+        
+        Returns:
+            Dict[str, Dict]: Información de cada archivo DBC cargado
+        """
+        dbc_info = {}
+        
+        for dbc_filename, database in self.databases.items():
+            dbc_info[dbc_filename] = {
+                'messages_count': len(database.messages),
+                'message_names': [msg.name for msg in database.messages],
+                'total_signals': sum(len(msg.signals) for msg in database.messages)
+            }
+        
+        return dbc_info
+    
+    def get_loaded_dbc_count(self) -> int:
+        """
+        Obtiene el número de archivos DBC cargados.
+        
+        Returns:
+            int: Número de archivos DBC cargados
+        """
+        return len(self.databases)
+    
+    def get_all_available_messages_from_dbc(self) -> List[str]:
+        """
+        Obtiene todos los mensajes disponibles de todas las bases de datos DBC cargadas.
+        
+        Returns:
+            List[str]: Lista de nombres de mensajes únicos de todas las DBCs
+        """
+        all_messages = set()
+        
+        for database in self.databases.values():
+            for message in database.messages:
+                all_messages.add(message.name)
+        
+        # Agregar de la base de datos principal si existe y no está en múltiples
+        if self.database and self.database not in self.databases.values():
+            for message in self.database.messages:
+                all_messages.add(message.name)
+        
+        return sorted(list(all_messages))
     
     def get_signal_data(self, message_name: str = None, signal_name: str = None) -> pd.DataFrame:
         """
@@ -432,19 +511,25 @@ class ProcessorBLF:
             logger.error(f"Error guardando dataset: {str(e)}")
             return False
     
-    def process_directory(self, blf_directory: str, dbc_path: str = None) -> pd.DataFrame:
+    def process_directory(self, blf_directory: str, dbc_path: str = None, dbc_paths: List[str] = None) -> pd.DataFrame:
         """
         Procesa todos los archivos BLF en un directorio.
         
         Args:
             blf_directory (str): Directorio con archivos BLF
-            dbc_path (str): Ruta opcional al archivo DBC
+            dbc_path (str): Ruta opcional al archivo DBC (compatibilidad)
+            dbc_paths (List[str]): Lista opcional de rutas a archivos DBC
             
         Returns:
             pd.DataFrame: Dataset procesado y decodificado
         """
+        # Cargar archivo DBC individual (compatibilidad)
         if dbc_path:
             self.load_dbc(dbc_path)
+        
+        # Cargar múltiples archivos DBC
+        if dbc_paths:
+            self.load_multiple_dbc(dbc_paths)
         
         # Encontrar archivos BLF
         blf_files = self.find_blf_files(blf_directory)

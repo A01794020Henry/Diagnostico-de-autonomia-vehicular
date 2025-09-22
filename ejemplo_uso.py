@@ -112,6 +112,154 @@ def ejemplo_basico():
         logger.error(f"Error durante el procesamiento: {str(e)}")
         print(f"❌ Error: {str(e)}")
 
+def ejemplo_multiples_dbc():
+    """
+    Ejemplo de uso con múltiples archivos DBC.
+    """
+    print("="*60)
+    print("EJEMPLO AVANZADO - MÚLTIPLES ARCHIVOS DBC")
+    print("="*60)
+    
+    # Rutas de ejemplo (ajustar según tu sistema)
+    dbc_paths = [
+        r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Desarrollo de Software EV\Datos\DBC\IP_JZ - CAN EV.DBC",
+        r"C:\ruta\a\otro\archivo.dbc",  # Ejemplo adicional
+        # Agregar más archivos DBC según necesites
+    ]
+    
+    # Filtrar solo archivos que existen
+    existing_dbc_paths = [path for path in dbc_paths if os.path.exists(path)]
+    
+    blf_directory = current_dir  # Buscar en directorio actual
+    
+    print(f"Directorio BLF: {blf_directory}")
+    print(f"Archivos DBC especificados: {len(dbc_paths)}")
+    print(f"Archivos DBC encontrados: {len(existing_dbc_paths)}")
+    
+    for i, dbc_path in enumerate(existing_dbc_paths, 1):
+        print(f"  {i}. {os.path.basename(dbc_path)}")
+    
+    if not existing_dbc_paths:
+        print("⚠️  No se encontraron archivos DBC, se procesarán datos crudos")
+    
+    # Crear procesador
+    processor = ProcessorBLF()
+    
+    # Buscar archivos BLF
+    blf_files = processor.find_blf_files(blf_directory)
+    print(f"\nArchivos BLF encontrados: {len(blf_files)}")
+    
+    if not blf_files:
+        print("❌ No se encontraron archivos BLF en el directorio")
+        return
+    
+    # Mostrar primeros archivos (si hay muchos)
+    for i, blf_file in enumerate(blf_files[:5]):
+        print(f"  {i+1}. {os.path.basename(blf_file)}")
+    if len(blf_files) > 5:
+        print(f"  ... y {len(blf_files) - 5} más")
+    
+    try:
+        # Cargar múltiples archivos DBC
+        if existing_dbc_paths:
+            print(f"\n🔧 Cargando {len(existing_dbc_paths)} archivos DBC...")
+            results = processor.load_multiple_dbc(existing_dbc_paths)
+            
+            successful_loads = sum(1 for success in results.values() if success)
+            print(f"✅ {successful_loads}/{len(existing_dbc_paths)} archivos DBC cargados exitosamente")
+            
+            # Mostrar información de archivos DBC cargados
+            dbc_info = processor.get_loaded_dbc_info()
+            for dbc_filename, info in dbc_info.items():
+                print(f"  📋 {dbc_filename}: {info['messages_count']} mensajes, {info['total_signals']} señales")
+        
+        # Procesar archivos BLF
+        print(f"\n🔄 Procesando {len(blf_files)} archivos BLF...")
+        unified_df = processor.unify_blf_files(blf_files)
+        
+        if unified_df.empty:
+            print("❌ No se pudieron procesar los archivos BLF")
+            return
+        
+        print(f"✅ Dataset unificado creado: {len(unified_df):,} mensajes")
+        
+        # Decodificar mensajes con múltiples DBCs
+        if existing_dbc_paths:
+            print(f"\n🔍 Decodificando mensajes con {len(existing_dbc_paths)} archivos DBC...")
+            decoded_df = processor.decode_messages(unified_df)
+            
+            if not decoded_df.empty:
+                print(f"✅ Decodificación completada: {len(decoded_df):,} señales")
+                mostrar_estadisticas_multiples_dbc(processor, decoded_df)
+            else:
+                print("❌ No se pudieron decodificar mensajes")
+        else:
+            print(f"\n⚠️  Sin archivos DBC, mostrando datos crudos")
+            mostrar_estadisticas_crudas(unified_df)
+        
+        # Sugerir próximos pasos
+        print(f"\n" + "="*60)
+        print("PRÓXIMOS PASOS SUGERIDOS")
+        print("="*60)
+        print("1. 📊 Ejecutar interfaz gráfica:")
+        print("   python main_blf_processor.py")
+        print("\n2. 💾 Usar línea de comandos con múltiples DBCs:")
+        print("   python main_blf_processor.py --cli --blf-dir . --dbc archivo1.dbc --dbc archivo2.dbc")
+        print("\n3. 📝 Crear archivo de lista DBC:")
+        print("   # Crear lista_dbc.txt con rutas de archivos DBC")
+        print("   python main_blf_processor.py --cli --blf-dir . --dbc-list lista_dbc.txt")
+        
+    except Exception as e:
+        logger.error(f"Error durante el procesamiento: {str(e)}")
+        print(f"❌ Error: {str(e)}")
+
+def mostrar_estadisticas_multiples_dbc(processor, decoded_df):
+    """
+    Muestra estadísticas detalladas para procesamiento con múltiples DBCs.
+    """
+    print(f"\n" + "="*40)
+    print("ESTADÍSTICAS - MÚLTIPLES DBC")
+    print("="*40)
+    
+    # Estadísticas básicas
+    print(f"📊 Total de señales decodificadas: {len(decoded_df):,}")
+    print(f"📋 Mensajes únicos: {decoded_df['message_name'].nunique()}")
+    print(f"🔗 Señales únicas: {decoded_df['signal_name'].nunique()}")
+    
+    # Información de archivos DBC utilizados
+    dbc_info = processor.get_loaded_dbc_info()
+    print(f"\n📁 Archivos DBC cargados: {len(dbc_info)}")
+    
+    total_dbc_messages = 0
+    total_dbc_signals = 0
+    
+    for dbc_filename, info in dbc_info.items():
+        total_dbc_messages += info['messages_count']
+        total_dbc_signals += info['total_signals']
+        print(f"  • {dbc_filename}:")
+        print(f"    - Mensajes disponibles: {info['messages_count']}")
+        print(f"    - Señales disponibles: {info['total_signals']}")
+    
+    print(f"\n📈 Capacidad total DBC:")
+    print(f"  • Total mensajes disponibles: {total_dbc_messages}")
+    print(f"  • Total señales disponibles: {total_dbc_signals}")
+    
+    # Estadísticas de cobertura
+    if not decoded_df.empty:
+        messages_decoded = decoded_df[decoded_df['message_name'] != decoded_df['message_name'].str.contains('Unknown_0x', na=False)]['message_name'].nunique()
+        coverage_percentage = (messages_decoded / total_dbc_messages * 100) if total_dbc_messages > 0 else 0
+        
+        print(f"\n🎯 Cobertura de decodificación:")
+        print(f"  • Mensajes decodificados: {messages_decoded}")
+        print(f"  • Cobertura: {coverage_percentage:.1f}%")
+    
+    # Top mensajes por frecuencia
+    if not decoded_df.empty:
+        top_messages = decoded_df['message_name'].value_counts().head(5)
+        print(f"\n🔝 Top 5 mensajes más frecuentes:")
+        for i, (message, count) in enumerate(top_messages.items(), 1):
+            print(f"  {i}. {message}: {count:,} señales")
+
 def mostrar_estadisticas(processor, decoded_df):
     """
     Muestra estadísticas detalladas del dataset decodificado.
@@ -257,19 +405,42 @@ def main():
         print("\nPor favor instala las dependencias faltantes antes de continuar")
         return 1
     
-    print()
+    print("\n📚 Ejemplos disponibles:")
+    print("1. Ejemplo básico (un archivo DBC)")
+    print("2. Ejemplo avanzado (múltiples archivos DBC)")
+    print("3. Ejecutar ambos ejemplos")
     
-    # Ejecutar ejemplo
-    try:
-        ejemplo_basico()
-        return 0
-    except KeyboardInterrupt:
-        print("\n\n❌ Ejemplo cancelado por el usuario")
-        return 1
-    except Exception as e:
-        logger.error(f"Error inesperado: {str(e)}")
-        print(f"\n❌ Error inesperado: {str(e)}")
-        return 1
+    while True:
+        try:
+            choice = input("\nSelecciona una opción (1-3): ").strip()
+            
+            if choice == "1":
+                print("\n🔧 Ejecutando ejemplo básico...")
+                ejemplo_basico()
+                break
+            elif choice == "2":
+                print("\n🔧 Ejecutando ejemplo avanzado...")
+                ejemplo_multiples_dbc()
+                break
+            elif choice == "3":
+                print("\n🔧 Ejecutando ambos ejemplos...")
+                ejemplo_basico()
+                print("\n" + "="*80)
+                ejemplo_multiples_dbc()
+                break
+            else:
+                print("❌ Opción inválida. Por favor selecciona 1, 2 o 3.")
+                continue
+                
+        except KeyboardInterrupt:
+            print("\n\n❌ Ejemplo cancelado por el usuario")
+            return 1
+        except Exception as e:
+            logger.error(f"Error inesperado: {str(e)}")
+            print(f"\n❌ Error inesperado: {str(e)}")
+            return 1
+    
+    return 0
 
 if __name__ == "__main__":
     import pandas as pd

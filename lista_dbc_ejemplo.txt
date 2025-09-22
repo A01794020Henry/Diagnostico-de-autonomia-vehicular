@@ -1,0 +1,26 @@
+# Lista de archivos DBC para procesamiento múltiple
+# ===================================================
+# 
+# Este archivo contiene una lista de archivos DBC que serán cargados
+# y utilizados para decodificar mensajes CAN de archivos BLF.
+#
+# Formato:
+# - Una ruta de archivo DBC por línea
+# - Líneas que empiecen con # son comentarios (ignoradas)
+# - Rutas pueden ser absolutas o relativas al directorio de trabajo
+#
+# Uso:
+# python main_blf_processor.py --cli --blf-dir "directorio_blf" --dbc-list "este_archivo.txt"
+
+# Archivo DBC principal del vehículo
+C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Desarrollo de Software EV\Datos\DBC\IP_JZ - CAN EV.DBC
+
+# Ejemplos de archivos DBC adicionales (descomentar y ajustar rutas según necesidad)
+# C:\proyecto\dbc\sistema_motor.dbc
+# C:\proyecto\dbc\bateria_bms.dbc  
+# C:\proyecto\dbc\diagnosticos.dbc
+# C:\proyecto\dbc\climatizacion.dbc
+
+# Archivos DBC relativos al directorio actual
+# archivos_dbc\vehiculo.dbc
+# archivos_dbc\propulsion.dbc

@@ -14,7 +14,7 @@ import os
 import numpy as np
 import pandas as pd
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, 
-                             QWidget, QPushButton, QComboBox, QListWidget, QSplitter,
+                             QWidget, QPushButton, QComboBox, QListWidget, QListWidgetItem, QSplitter,
                              QGroupBox, QLabel, QLineEdit, QCheckBox, QProgressBar,
                              QFileDialog, QMessageBox, QAbstractItemView, QTabWidget,
                              QTableWidget, QTableWidgetItem, QHeaderView, QTextEdit)
@@ -42,21 +42,32 @@ class ProcessingThread(QThread):
     processing_finished = pyqtSignal(pd.DataFrame)
     error_occurred = pyqtSignal(str)
     
-    def __init__(self, blf_directory, dbc_path=None):
+    def __init__(self, blf_directory, dbc_paths=None):
         super().__init__()
         self.blf_directory = blf_directory
-        self.dbc_path = dbc_path
+        self.dbc_paths = dbc_paths or []
         self.processor = ProcessorBLF()
     
     def run(self):
         try:
             self.progress_updated.emit(10, "Inicializando procesador...")
             
-            if self.dbc_path:
-                self.progress_updated.emit(20, "Cargando archivo DBC...")
-                if not self.processor.load_dbc(self.dbc_path):
-                    self.error_occurred.emit("Error cargando archivo DBC")
+            # Cargar múltiples archivos DBC
+            if self.dbc_paths:
+                self.progress_updated.emit(20, f"Cargando {len(self.dbc_paths)} archivo(s) DBC...")
+                results = self.processor.load_multiple_dbc(self.dbc_paths)
+                
+                # Verificar si al menos un archivo se cargó exitosamente
+                successful_loads = sum(1 for success in results.values() if success)
+                if successful_loads == 0:
+                    self.error_occurred.emit("No se pudo cargar ningún archivo DBC")
                     return
+                elif successful_loads < len(self.dbc_paths):
+                    failed_files = [path for path, success in results.items() if not success]
+                    # Continuar procesamiento pero notificar archivos fallidos
+                    logger.warning(f"Algunos archivos DBC no se pudieron cargar: {failed_files}")
+            else:
+                self.progress_updated.emit(20, "Sin archivos DBC - procesando datos crudos...")
             
             self.progress_updated.emit(30, "Buscando archivos BLF...")
             blf_files = self.processor.find_blf_files(self.blf_directory)
@@ -275,9 +286,20 @@ class CANVisualizerGUI(QMainWindow):
         self.blf_path_edit.setPlaceholderText("Directorio de archivos BLF")
         self.blf_browse_btn = QPushButton("Buscar Directorio BLF")
         
-        self.dbc_path_edit = QLineEdit()
-        self.dbc_path_edit.setPlaceholderText("Archivo DBC (opcional)")
-        self.dbc_browse_btn = QPushButton("Buscar Archivo DBC")
+        # Sección de archivos DBC múltiples
+        self.dbc_list_widget = QListWidget()
+        self.dbc_list_widget.setMaximumHeight(100)
+        self.dbc_list_widget.setToolTip("Lista de archivos DBC cargados")
+        
+        # Botones para manejo de archivos DBC
+        dbc_buttons_layout = QHBoxLayout()
+        self.dbc_add_btn = QPushButton("Agregar DBC")
+        self.dbc_remove_btn = QPushButton("Quitar DBC")
+        self.dbc_clear_btn = QPushButton("Limpiar Todo")
+        
+        dbc_buttons_layout.addWidget(self.dbc_add_btn)
+        dbc_buttons_layout.addWidget(self.dbc_remove_btn)
+        dbc_buttons_layout.addWidget(self.dbc_clear_btn)
         
         self.process_btn = QPushButton("Procesar Archivos")
         self.process_btn.setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; }")
@@ -285,9 +307,9 @@ class CANVisualizerGUI(QMainWindow):
         file_layout.addWidget(QLabel("Directorio BLF:"))
         file_layout.addWidget(self.blf_path_edit)
         file_layout.addWidget(self.blf_browse_btn)
-        file_layout.addWidget(QLabel("Archivo DBC:"))
-        file_layout.addWidget(self.dbc_path_edit)
-        file_layout.addWidget(self.dbc_browse_btn)
+        file_layout.addWidget(QLabel("Archivos DBC (opcional):"))
+        file_layout.addWidget(self.dbc_list_widget)
+        file_layout.addLayout(dbc_buttons_layout)
         file_layout.addWidget(self.process_btn)
         
         file_group.setLayout(file_layout)
@@ -380,7 +402,11 @@ class CANVisualizerGUI(QMainWindow):
         """
         # Botones de navegación de archivos
         self.blf_browse_btn.clicked.connect(self.browse_blf_directory)
-        self.dbc_browse_btn.clicked.connect(self.browse_dbc_file)
+        
+        # Botones DBC múltiples
+        self.dbc_add_btn.clicked.connect(self.add_dbc_file)
+        self.dbc_remove_btn.clicked.connect(self.remove_dbc_file)
+        self.dbc_clear_btn.clicked.connect(self.clear_dbc_files)
         
         # Procesamiento
         self.process_btn.clicked.connect(self.process_files)
@@ -403,20 +429,61 @@ class CANVisualizerGUI(QMainWindow):
         if directory:
             self.blf_path_edit.setText(directory)
     
-    def browse_dbc_file(self):
+    def add_dbc_file(self):
         """
-        Abre diálogo para seleccionar archivo DBC.
+        Abre diálogo para agregar un archivo DBC a la lista.
         """
         file_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar Archivo DBC", "", "DBC files (*.dbc)")
         if file_path:
-            self.dbc_path_edit.setText(file_path)
+            # Verificar que no esté ya en la lista
+            existing_items = []
+            for i in range(self.dbc_list_widget.count()):
+                existing_items.append(self.dbc_list_widget.item(i).text())
+            
+            if file_path not in existing_items:
+                # Mostrar solo el nombre del archivo en la lista
+                filename = os.path.basename(file_path)
+                item = QListWidgetItem(f"{filename}")
+                item.setData(Qt.UserRole, file_path)  # Guardar ruta completa como datos
+                item.setToolTip(file_path)  # Mostrar ruta completa en tooltip
+                self.dbc_list_widget.addItem(item)
+    
+    def remove_dbc_file(self):
+        """
+        Remueve el archivo DBC seleccionado de la lista.
+        """
+        current_item = self.dbc_list_widget.currentItem()
+        if current_item:
+            row = self.dbc_list_widget.row(current_item)
+            self.dbc_list_widget.takeItem(row)
+    
+    def clear_dbc_files(self):
+        """
+        Limpia todos los archivos DBC de la lista.
+        """
+        self.dbc_list_widget.clear()
+    
+    def get_selected_dbc_paths(self):
+        """
+        Obtiene las rutas de todos los archivos DBC en la lista.
+        
+        Returns:
+            List[str]: Lista de rutas a archivos DBC
+        """
+        dbc_paths = []
+        for i in range(self.dbc_list_widget.count()):
+            item = self.dbc_list_widget.item(i)
+            file_path = item.data(Qt.UserRole)
+            if file_path:
+                dbc_paths.append(file_path)
+        return dbc_paths
     
     def process_files(self):
         """
         Inicia el procesamiento de archivos BLF.
         """
         blf_directory = self.blf_path_edit.text().strip()
-        dbc_path = self.dbc_path_edit.text().strip() or None
+        dbc_paths = self.get_selected_dbc_paths()
         
         if not blf_directory:
             QMessageBox.warning(self, "Error", "Debe seleccionar un directorio de archivos BLF")
@@ -426,8 +493,15 @@ class CANVisualizerGUI(QMainWindow):
             QMessageBox.warning(self, "Error", "El directorio BLF no existe")
             return
         
-        if dbc_path and not os.path.exists(dbc_path):
-            QMessageBox.warning(self, "Error", "El archivo DBC no existe")
+        # Verificar que todos los archivos DBC existan
+        invalid_dbc_files = []
+        for dbc_path in dbc_paths:
+            if not os.path.exists(dbc_path):
+                invalid_dbc_files.append(dbc_path)
+        
+        if invalid_dbc_files:
+            error_msg = f"Los siguientes archivos DBC no existen:\n" + "\n".join(invalid_dbc_files)
+            QMessageBox.warning(self, "Error", error_msg)
             return
         
         # Deshabilitar controles durante procesamiento
@@ -435,8 +509,15 @@ class CANVisualizerGUI(QMainWindow):
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         
+        # Mostrar información sobre archivos a procesar
+        if dbc_paths:
+            status_msg = f"Procesando con {len(dbc_paths)} archivo(s) DBC..."
+            self.statusBar().showMessage(status_msg)
+        else:
+            self.statusBar().showMessage("Procesando sin archivos DBC (solo datos crudos)...")
+        
         # Iniciar procesamiento en hilo separado
-        self.processing_thread = ProcessingThread(blf_directory, dbc_path)
+        self.processing_thread = ProcessingThread(blf_directory, dbc_paths)
         self.processing_thread.progress_updated.connect(self.update_progress)
         self.processing_thread.processing_finished.connect(self.on_processing_finished)
         self.processing_thread.error_occurred.connect(self.on_processing_error)
