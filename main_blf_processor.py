@@ -316,3 +316,6 @@ if __name__ == "__main__":
         logger.error(f"Error inesperado: {str(e)}")
         print(f"Error inesperado: {str(e)}")
         sys.exit(1)
+        
+        
+# Este es un comentario final para asegurar que el archivo termina correctamente.

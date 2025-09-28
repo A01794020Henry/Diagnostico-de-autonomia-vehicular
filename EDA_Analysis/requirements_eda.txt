@@ -1,0 +1,45 @@
+# Dependencias para Análisis Exploratorio de Datos (EDA)
+# Sistema de Diagnóstico de Autonomía Vehicular
+
+# Análisis de datos y estadística
+pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+statsmodels>=0.14.0
+
+# Visualización
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.14.0
+bokeh>=3.1.0
+
+# Análisis especializado
+scikit-learn>=1.3.0
+missingno>=0.5.2
+yellowbrick>=1.5
+sweetviz>=2.1.4
+pandas-profiling>=4.0.0
+phik>=0.12.3
+
+# Detección de anomalías
+pyod>=1.0.9
+isolation-forest>=0.1.1
+
+# Análisis temporal
+tsfresh>=0.20.0
+prophet>=1.1.4
+seasonal>=0.3.1
+
+# Procesamiento específico del proyecto
+cantools>=39.4.0
+python-can>=4.2.0
+
+# Jupyter y notebooks
+jupyter>=1.0.0
+ipywidgets>=8.0.0
+nbformat>=5.8.0
+
+# Utilidades adicionales
+tqdm>=4.65.0
+openpyxl>=3.1.0
+xlsxwriter>=3.1.0

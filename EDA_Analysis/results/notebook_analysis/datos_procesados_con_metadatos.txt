@@ -1,0 +1,8 @@
+# METADATOS DEL DATASET
+# Fecha de procesamiento: 2025-09-28 18:04:19
+# Registros totales: 38,216,498
+# Variables: 12
+# Completitud: 8.2%
+# Outliers detectados: 0.42%
+# Correlación máxima: 0.999
+# Variables con datos faltantes: 2
