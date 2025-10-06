@@ -1,0 +1,84 @@
+VERSION ""
+
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_: Gateway ECU_Motor ECU_Frenos ECU_Transmision
+
+BU_: Gateway ECU_Motor ECU_Frenos ECU_Transmision
+
+
+BO_ 512 Motor_Status: 8 ECU_Motor
+ SG_ RPM : 0|16@1+ (1,0) [0|8000] "rpm" Gateway,ECU_Frenos
+ SG_ Temperatura_Motor : 16|8@1+ (1,-40) [-40|150] "°C" Gateway
+ SG_ Presion_Aceite : 24|12@1+ (0.1,0) [0|10] "bar" Gateway
+ SG_ Estado_Motor : 36|2@1+ (1,0) [0|3] "" Gateway
+
+BO_ 513 Velocidad_Vehiculo: 4 ECU_Transmision
+ SG_ Velocidad : 0|16@1+ (0.1,0) [0|300] "km/h" Gateway,ECU_Frenos
+ SG_ Marcha_Actual : 16|4@1+ (1,0) [0|8] "" Gateway
+
+BO_ 514 Sistema_Frenos: 6 ECU_Frenos
+ SG_ Presion_Freno_Delantero : 0|12@1+ (0.1,0) [0|200] "bar" Gateway
+ SG_ Presion_Freno_Trasero : 12|12@1+ (0.1,0) [0|200] "bar" Gateway
+ SG_ Estado_ABS : 24|1@1+ (1,0) [0|1] "" Gateway
+ SG_ Estado_ESP : 25|1@1+ (1,0) [0|1] "" Gateway
+
+BO_ 768 Sensores_Ambiente: 8 Gateway
+ SG_ Temperatura_Exterior : 0|8@1+ (1,-40) [-40|80] "°C" ECU_Motor,ECU_Frenos
+ SG_ Humedad : 8|8@1+ (0.5,0) [0|100] "%" ECU_Motor
+ SG_ Presion_Atmosferica : 16|16@1+ (0.1,0) [800|1200] "hPa" ECU_Motor
+
+
+BA_DEF_ "BusType" STRING ;
+BA_DEF_ "VFrameFormat" ENUM  "StandardCAN","ExtendedCAN","reserved","J1939PG","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","reserved","StandardCAN_FD","ExtendedCAN_FD";
+BA_DEF_ "GenMsgCycleTime" INT 0 3600000;
+BA_DEF_ BO_ "GenMsgDelayTime" INT 0 1000;
+
+BA_DEF_DEF_ "BusType" "CAN";
+BA_DEF_DEF_ "VFrameFormat" "StandardCAN";
+BA_DEF_DEF_ "GenMsgCycleTime" 0;
+BA_DEF_DEF_ "GenMsgDelayTime" 0;
+
+BA_ "GenMsgCycleTime" BO_ 512 100;
+BA_ "GenMsgCycleTime" BO_ 513 50;
+BA_ "GenMsgCycleTime" BO_ 514 20;
+BA_ "GenMsgCycleTime" BO_ 768 1000;
+
+VAL_ 512 Estado_Motor 0 "Apagado" 1 "Ralenti" 2 "Normal" 3 "Alta_Carga" ;
+VAL_ 513 Marcha_Actual 0 "Parking" 1 "Reversa" 2 "Neutral" 3 "Drive_1" 4 "Drive_2" 5 "Drive_3" 6 "Drive_4" 7 "Sport" ;
+VAL_ 514 Estado_ABS 0 "Inactivo" 1 "Activo" ;
+VAL_ 514 Estado_ESP 0 "Inactivo" 1 "Activo" ;
+
+CM_ BO_ 512 "Mensaje con información del estado del motor";
+CM_ BO_ 513 "Información de velocidad y transmisión";
+CM_ BO_ 514 "Estado del sistema de frenos y seguridad";
+CM_ BO_ 768 "Sensores ambientales del vehículo";
+CM_ SG_ 512 RPM "Revoluciones por minuto del motor";
+CM_ SG_ 512 Temperatura_Motor "Temperatura del refrigerante del motor";
+CM_ SG_ 513 Velocidad "Velocidad actual del vehículo";

@@ -13,7 +13,7 @@ import pandas as pd
 
 
 # Ruta del archivo GPX
-gpx_file_path = "C:\\haranzales\\OneDrive - Superpolo S.A.S\\Ingenieria\\Gestion\\Logs\\17_sept_2025_7_17_52.gpx"
+gpx_file_path = "C:\\haranzales\\OneDrive - Superpolo S.A.S\\Ingenieria\\Gestion\\Logs\\19_sept_2025_7_27_46.gpx"
 
 # Lectura de archivo .GPX
 with open(gpx_file_path, 'r', encoding='utf-8') as gpx_file:
@@ -24,6 +24,7 @@ latitudes= []
 longitudes= []
 altitudes= []
 times= []
+distances =[] 
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371000 # Radio de la Tierra en metros
@@ -34,7 +35,7 @@ def haversine(lat1, lon1, lat2, lon2):
     a = np.sin(dphi/2)**2 + np.cos(phi1)*np.cos(phi2)*np.sin(dlambda/2)**2
     return 2*R*np.arcsin(np.sqrt(a))
 
-distances = [0]
+total_distance = 0
 
 for track in gpx.tracks:
     for segment in track.segments:
@@ -44,9 +45,12 @@ for track in gpx.tracks:
             longitudes.append(point.longitude)
             altitudes.append(point.elevation)
             times.append(point.time)
+            
             if prev_point:
                 d = haversine(prev_point.latitude, prev_point.longitude, point.latitude, point.longitude)
-                distances.append(distances[-1] + d)
+                total_distance += d
+                
+            distances.append(total_distance)
             prev_point = point
             
 # Calcular el tiempo en segundos desde el inicio del recorrido
@@ -79,7 +83,7 @@ plt.ylabel('Altitud del recorrido (m)')
 plt.title('Comportamiento de la altitud con respecto a la distancia recorrida')
 plt.grid()
 plt.legend()
-plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Tiempo_vs_Altura.png")
+plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Tiempo_vs_Altura_R2.png")
 plt.show()
 
 # Grafica de la ruta realizada (2D) Sin interactividad
@@ -89,7 +93,7 @@ plt.xlabel("Longitud")
 plt.ylabel("Latitud")
 plt.title("Representación gráfica de la Ruta GPS")
 plt.grid()
-plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Recorrido_GPS.png")
+plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Recorrido_GPS_R2.png")
 plt.show()
 
 # Mapa interactivo de la ruta recorrida
@@ -172,7 +176,7 @@ print(f"Número de paradas: {num_paradas}")
 print(f"Consumo energético estimado: {consumo_total:.2f} kWh")
 
 # Guardar resumen en CSV
-df.to_csv(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\resumen_ruta.csv", index=False)
+df.to_csv(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\resumen_ruta_2.csv", index=False)
 
 # =====================
 # Gráficas avanzadas
@@ -185,7 +189,7 @@ plt.ylabel('Velocidad (km/h)')
 plt.title('Velocidad vs Distancia')
 plt.grid()
 plt.legend()
-plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Velocidad_vs_Distancia.png")
+plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Velocidad_vs_Distancia_R2.png")
 plt.show()
 
 plt.figure(figsize=(10,5))
@@ -198,7 +202,7 @@ umbral_pend = 10  # %
 extremos = df[(df['pendiente_%'] > umbral_pend) | (df['pendiente_%'] < -umbral_pend)]
 plt.scatter(extremos['dist']/1000, extremos['pendiente_%'], color='red', label='Pendiente extrema')
 plt.legend()
-plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\pendiente_vs_distancia.png")
+plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\pendiente_vs_distancia_R2.png")
 plt.show()
 
 plt.figure(figsize=(10,5))
@@ -207,7 +211,7 @@ plt.xlabel('Velocidad (km/h)')
 plt.ylabel('Frecuencia')
 plt.title('Histograma de velocidades')
 plt.grid()
-plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Histograma_Velocidades.png")
+plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Histograma_Velocidades_R2.png")
 plt.show()
 
 plt.figure(figsize=(10,5))
@@ -216,7 +220,7 @@ plt.xlabel('Distancia (km)')
 plt.ylabel('Aceleración (m/s²)')
 plt.title('Aceleración vs Distancia')
 plt.grid()
-plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Aceleracion_vs_Distancia.png")
+plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Aceleracion_vs_Distancia_R2.png")
 plt.show()
 
 plt.figure(figsize=(10,5))
@@ -225,7 +229,7 @@ plt.xlabel('Distancia (km)')
 plt.ylabel('Consumo acumulado (kWh)')
 plt.title('Consumo energético estimado vs Distancia (Grafica de Prueba)')
 plt.grid()
-plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Consumo_vs_Distancia.png")
+plt.savefig(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Consumo_vs_Distancia_R2.png")
 plt.show()
 
 # Mapa interactivo avanzado con paradas y tramos
@@ -250,7 +254,7 @@ if latitudes and longitudes:
             folium.CircleMarker([row['lat'], row['lon']], radius=6, color=color, fill=True, fill_opacity=0.7,
                 popup=f"Pendiente: {row['pendiente_%']:.1f}%").add_to(m)
     m.save(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\mapa_ruta_avanzado.html")
-    print('Mapa interactivo avanzado guardado como mapa_ruta_avanzado.html')
+    print('Mapa interactivo avanzado guardado como mapa_ruta_avanzado_R2.html')
 
 # Primer punto de inicio de la ruta (Para tener en cuenta)
 if latitudes and longitudes:
@@ -270,7 +274,7 @@ if latitudes and longitudes:
             folium.Marker([wp.latitude, wp.longitude], popup=wp.name or 'Parada', icon=folium.Icon(color='orange', icon='flag')).add_to(m)
 
     # Guardar el mapa
-    m.save(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Mapa_Ruta_Paradas.html")
+    m.save(r"C:\haranzales\OneDrive - Superpolo S.A.S\Ingenieria\Repositorios\Prueba de Autonomia EV_Prototipo\Mapa_Ruta_Paradas_R2.html")
     print('Mapa interactivo guardado como mapa_ruta.html')
 else:
     print("No se encontraron purnto para recontruir la ruta")
